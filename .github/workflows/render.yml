@@ -27,7 +27,7 @@ jobs:
           NARASI: ${{ github.event.client_payload.narasi }}
         run: |
           python -m pip install --upgrade pip
-          python -m pip install requests gTTS moviepy==1.0.3 pillow
+          python -m pip install requests edge-tts moviepy==1.0.3 pillow
           python render_script.py
 
       - name: Upload Output Video
