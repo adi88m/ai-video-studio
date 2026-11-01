@@ -30,8 +30,10 @@ jobs:
           python -m pip install requests edge-tts "Pillow<10.0.0" moviepy==1.0.3
           python render_script.py
 
-      - name: Upload Output Video
+      - name: Upload Output Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: video-result
-          path: output.mp4
+          path: |
+            output.mp4
+            video_url.txt
