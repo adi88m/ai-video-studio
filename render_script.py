@@ -1,9 +1,15 @@
 import os
 import sys
+import asyncio
 import urllib.parse
 import requests
-from gTTS import gTTS
+import edge_tts
 from moviepy.editor import ImageClip, AudioFileClip
+
+async def make_voiceover(text, output_file):
+    # Menggunakan suara AI Bahasa Indonesia (id-ID-ArdiNeural)
+    communicate = edge_tts.Communicate(text, "id-ID-ArdiNeural")
+    await communicate.save(output_file)
 
 def generate_video():
     prompt = os.environ.get("PROMPT", "cinematic photo of ancient temple in mystery forest")
@@ -23,22 +29,21 @@ def generate_video():
         print(f"  -> Error unduh gambar: {e}")
         sys.exit(1)
 
-    print(f"[2/4] Membuat voiceover Bahasa Indonesia untuk narasi: {narasi}")
+    print(f"[2/4] Membuat voiceover Bahasa Indonesia (Edge-TTS)...")
     try:
-        tts = gTTS(text=narasi, lang='id')
-        tts.save("voice.mp3")
-        print("  -> Audio voiceover berhasil dibuat.")
+        asyncio.run(make_voiceover(narasi, "voice.mp3"))
+        print("  -> File voice.mp3 berhasil dibuat.")
     except Exception as e:
-        print(f"  -> Error gTTS: {e}")
+        print(f"  -> Error TTS: {e}")
         sys.exit(1)
 
-    print("[3/4] Merender video .MP4 dengan efek Ken Burns Zoom & FFmpeg...")
+    print("[3/4] Merender video .MP4...")
     try:
         audio_clip = AudioFileClip("voice.mp3")
         duration = audio_clip.duration
 
-        img_clip = ImageClip("bg.jpg").set_duration(duration).resize((720, 1280))
-        img_clip = img_clip.resize(lambda t: 1 + 0.05 * t)  # Efek Zoom Gerak Perlahan
+        img_clip = ImageClip("bg.jpg").set_duration(duration)
+        img_clip = img_clip.resize((720, 1280))
         img_clip = img_clip.set_audio(audio_clip)
 
         output_path = "output.mp4"
@@ -50,6 +55,9 @@ def generate_video():
             preset="ultrafast",
             threads=2
         )
+        
+        audio_clip.close()
+        img_clip.close()
         print(f"[4/4] Video berhasil dirender: {output_path}")
     except Exception as e:
         print(f"  -> Error rendering video: {e}")
