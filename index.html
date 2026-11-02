@@ -561,6 +561,7 @@
 
       const interval = setInterval(async () => {
         try {
+          // Ambil status workflow terbaru
           const res = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/actions/runs?per_page=1`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -572,39 +573,44 @@
             renderBtn.disabled = false;
 
             if (latestRun.conclusion === "success") {
-              // 1. OPSI UTAMA: BACA DIRECT DARI RAW RESULT.JSON
+              // MEKANISME REAL-TIME: Ambil langsung dari GitHub Contents API untuk menembus CDN Cache
               try {
-                const resultRes = await fetch(`https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/main/result.json?t=${new Date().getTime()}`);
-                if (resultRes.ok) {
-                  const resultData = await resultRes.json();
-                  if (resultData.url) {
-                    showSuccessVideo(resultData.url);
+                const fileApiRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/result.json?t=${new Date().getTime()}`, {
+                  headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                  }
+                });
+
+                if (fileApiRes.ok) {
+                  const fileApiData = await fileApiRes.json();
+                  const decodedContent = decodeURIComponent(escape(atob(fileApiData.content)));
+                  const jsonParsed = JSON.parse(decodedContent);
+
+                  if (jsonParsed.url && jsonParsed.url.startsWith("http")) {
+                    showSuccessVideo(jsonParsed.url);
+                    return;
+                  }
+                }
+              } catch(e) {
+                console.error("Gagal baca via API Contents:", e);
+              }
+
+              // Fallback Raw CDN jika API gagal
+              try {
+                const rawRes = await fetch(`https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/main/result.json?nocache=${Math.random()}`);
+                if (rawRes.ok) {
+                  const rawJson = await rawRes.json();
+                  if (rawJson.url && rawJson.url.startsWith("http")) {
+                    showSuccessVideo(rawJson.url);
                     return;
                   }
                 }
               } catch(e) {}
 
-              // 2. OPSI FALLBACK: BACA VIA API COMMIT REPOS KETIKA RAW DELAY CACHE
-              try {
-                const commitRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/commits/main`, {
-                  headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (commitRes.ok) {
-                  const commitData = await commitRes.json();
-                  const rawRes = await fetch(`https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/${commitData.sha}/result.json`);
-                  if (rawRes.ok) {
-                    const rawJson = await rawRes.json();
-                    if (rawJson.url) {
-                      showSuccessVideo(rawJson.url);
-                      return;
-                    }
-                  }
-                }
-              } catch(e) {}
-
-              status.innerHTML = "⚠️ Video selesai dirender! Buka file result.json di repositori GitHub kamu untuk mengambil link video Catbox.";
+              status.innerHTML = "⚠️ Video selesai dirender, namun link belum dapat dibaca. Coba tekan F5 / Refresh.";
             } else {
-              status.innerHTML = "❌ Rendering gagal di server. Silakan coba lagi.";
+              status.innerHTML = "❌ Rendering gagal di server. Silakan cek log di repositori.";
             }
             progressContainer.style.display = "none";
           }
