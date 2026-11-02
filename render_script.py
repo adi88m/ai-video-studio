@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import requests
+import urllib.parse
 from moviepy.editor import (
     ImageClip, 
     AudioFileClip, 
@@ -22,8 +23,8 @@ except Exception as e:
     payload = {}
 
 # Parameter Utama
-prompt = payload.get('prompt', 'Default Prompt')
-narasi = payload.get('narasi', '')
+prompt = payload.get('prompt', 'candi kuno di tengah hutan misterius malam hari')
+narasi = payload.get('narasi', 'Dia berjalan menyusuri tempat suci yang telah lama terlupakan.')
 voice = payload.get('voice', 'id-ID-ArdiNeural')
 aspect = payload.get('aspect', '9:16')
 style = payload.get('style', 'cinematic')
@@ -45,60 +46,109 @@ motion = extra_data.get('motion', 'zoom_in')
 resolution = extra_data.get('resolution', '720p')
 watermark = extra_data.get('watermark', '')
 
-print(f"🚀 Memulai alur kerja render:")
-print(f"   - Prompt 1: {prompt}")
-print(f"   - Voice A : {voice}")
-print(f"   - Aspect  : {aspect}")
-print(f"   - Style   : {style}")
+print("==========================================")
+print(f"🚀 Memulai alur kerja render AI Video:")
+print(f"   - Prompt 1  : {prompt}")
+print(f"   - Narasi 1  : {narasi}")
+print(f"   - Voice A   : {voice}")
+print(f"   - Aspek     : {aspect}")
+print(f"   - Style     : {style}")
+print("==========================================")
 
 # ---------------------------------------------------------
-# 2. FUNGSI UPLOAD KE CATBOX.MOE
+# 2. GENERATE GAMBAR VIA POLLINATIONS AI
+# ---------------------------------------------------------
+# Tentukan resolusi gambar berdasarkan aspek rasio
+width, height = (720, 1280) if aspect == '9:16' else (1280, 720)
+enhanced_prompt = f"{prompt}, {style} style, highly detailed, 8k resolution"
+encoded_prompt = urllib.parse.quote(enhanced_prompt)
+image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&nologo=true"
+
+print(f"🎨 Mengunduh gambar AI dari Pollinations: {image_url}")
+img_response = requests.get(image_url, timeout=60)
+if img_response.status_code == 200:
+    with open("scene1.jpg", "wb") as f:
+        f.write(img_response.content)
+    print("✅ Gambar adegan 1 berhasil disimpan.")
+else:
+    print(f"❌ Gagal mengunduh gambar AI (Status {img_response.status_code}). Exit.")
+    sys.exit(1)
+
+# ---------------------------------------------------------
+# 3. GENERATE AUDIO SUARA AI (EDGE-TTS)
+# ---------------------------------------------------------
+audio_file = "audio1.mp3"
+print(f"🎙️ Menggenerasi suara AI dengan voice '{voice}'...")
+tts_cmd = f'edge-tts --text "{narasi}" --voice "{voice}" --write-media {audio_file}'
+os.system(tts_cmd)
+
+if not os.path.exists(audio_file):
+    print("❌ Gagal menggenerasi file audio TTS. Exit.")
+    sys.exit(1)
+
+print("✅ Suara AI berhasil dikomposisi.")
+
+# ---------------------------------------------------------
+# 4. RENDER VIDEO MENGGUNAKAN MOVIEPY
+# ---------------------------------------------------------
+output_filename = "output_video.mp4"
+
+try:
+    audio_clip = AudioFileClip(audio_file)
+    duration = audio_clip.duration
+
+    img_clip = ImageClip("scene1.jpg").set_duration(duration)
+    
+    # Gabungkan audio dan gambar
+    video_clip = img_clip.set_audio(audio_clip)
+
+    print(f"🎬 Merender video MP4 (Durasi: {duration:.2f}s)...")
+    video_clip.write_videofile(
+        output_filename,
+        fps=24,
+        codec='libx264',
+        audio_codec='aac',
+        preset='ultrafast'
+    )
+
+    audio_clip.close()
+    img_clip.close()
+    video_clip.close()
+    print("✅ Render MP4 lokal selesai!")
+except Exception as err:
+    print(f"❌ Terjadi kesalahan MoviePy: {err}")
+    sys.exit(1)
+
+# ---------------------------------------------------------
+# 5. UPLOAD KE CATBOX.MOE & UPDATE RESULT.JSON
 # ---------------------------------------------------------
 def upload_to_catbox(file_path):
     print(f"📤 Mengunggah {file_path} ke Catbox.moe...")
     try:
         with open(file_path, 'rb') as f:
-            response = requests.post(
+            res = requests.post(
                 'https://catbox.moe/user/api.php',
                 data={'reqtype': 'fileupload'},
                 files={'fileToUpload': f},
-                timeout=60
+                timeout=90
             )
-        if response.status_code == 200:
-            url = response.text.strip()
-            print(f"✅ Upload Berhasil: {url}")
-            return url
+        if res.status_code == 200:
+            return res.text.strip()
         else:
-            print(f"❌ Upload Gagal (HTTP {response.status_code}): {response.text}")
-            return None
-    except Exception as err:
-        print(f"❌ Terjadi kesalahan saat unggah ke Catbox: {err}")
-        return None
+            print(f"❌ Catbox HTTP Error: {res.status_code}")
+    except Exception as e:
+        print(f"❌ Kesalahan saat unggah Catbox: {e}")
+    return None
 
-# ---------------------------------------------------------
-# 3. PROSES GENERATE & RENDER VIDEO (LOGIKA UTAMA KAMU)
-# ---------------------------------------------------------
-# Catatan: Masukkan logika generate gambar (Pollinations AI), TTS (edge-tts), 
-# dan penggabungan MoviePy kamu di area ini.
+catbox_url = upload_to_catbox(output_filename)
 
-output_filename = "output_video.mp4"
+if not catbox_url or not catbox_url.startswith("http"):
+    print("❌ Gagal mendapatkan URL publik dari Catbox. Exit.")
+    sys.exit(1)
 
-# (Simulasi/Dummy pengujian jika proses render berhasil membuat file)
-# Jika kamu sudah memiliki pipeline pembuatan file video, variabel output_filename akan terisi.
+print(f"\n🎉 UPLOAD CATBOX SUKSES: {catbox_url}\n")
 
-# ---------------------------------------------------------
-# 4. SIMPAN HASIL KE RESULT.JSON (INTEGRASI UTAMA)
-# ---------------------------------------------------------
-catbox_url = None
-
-if os.path.exists(output_filename):
-    catbox_url = upload_to_catbox(output_filename)
-
-# Jika catbox_url belum didapatkan dari upload file lokal, gunakan tautan sampel/fallback
-if not catbox_url:
-    catbox_url = "https://files.catbox.moe/sample.mp4"
-
-# Tulis output akhir ke file result.json
+# Tulis URL aktif ke file result.json
 result_payload = {
     "status": "success",
     "url": catbox_url
@@ -107,7 +157,7 @@ result_payload = {
 with open("result.json", "w", encoding="utf-8") as f:
     json.dump(result_payload, f, indent=2)
 
-print("\n==========================================")
+print("==========================================")
 print(f"CATBOX_URL_RESULT:{catbox_url}")
-print("==========================================\n")
-print("✅ Selesai memperbarui result.json!")
+print("==========================================")
+print("✅ `result.json` berhasil diperbarui.")
