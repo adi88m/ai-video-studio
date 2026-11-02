@@ -98,7 +98,7 @@
       color: #cbd5e1; 
     }
 
-    input[type="text"], textarea, select { 
+    input[type="text"], input[type="password"], textarea, select { 
       width: 100%; 
       padding: 12px; 
       background: rgba(15, 23, 42, 0.6); 
@@ -111,7 +111,7 @@
       transition: border-color 0.2s;
     }
 
-    input[type="text"]:focus, textarea:focus, select:focus {
+    input[type="text"]:focus, input[type="password"]:focus, textarea:focus, select:focus {
       border-color: var(--primary);
     }
 
@@ -261,6 +261,13 @@
     </div>
 
     <div class="card">
+      <!-- INPUT TOKEN PAT SECURE -->
+      <div class="form-group" style="background: rgba(99, 102, 241, 0.1); padding: 12px; border-radius: 8px; border: 1px dashed #6366f1; margin-bottom: 16px;">
+        <label style="color: #a5b4fc;">🔑 GitHub Fine-Grained Token (PAT)</label>
+        <input type="password" id="userTokenInput" placeholder="github_pat_11AAAAAAA_xxxxxxxx..." onchange="saveTokenLocally()">
+        <span style="font-size: 11px; color: #94a3b8; margin-top: 4px; display: block;">Token disimpan secara lokal di browser Anda untuk menghindari kebocoran Secret Scanning.</span>
+      </div>
+
       <div class="section-title">⚙️ Konfigurasi Video & Audio</div>
       <div class="grid-2">
         <div class="form-group">
@@ -388,8 +395,22 @@
 
   <script>
     const GITHUB_USERNAME = "adi88m";               
-    const GITHUB_REPO     = "ai-video-studio";     
-    const GITHUB_TOKEN    = "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"; // Ganti dengan Token PAT milikmu
+    const GITHUB_REPO     = "ai-video-studio"; 
+
+    // Memuat token tersimpan dari localStorage saat halaman dibuka
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedToken = localStorage.getItem("STUDIO_PAT_TOKEN");
+      if (savedToken) {
+        document.getElementById('userTokenInput').value = savedToken;
+      }
+    });
+
+    function saveTokenLocally() {
+      const tokenVal = document.getElementById('userTokenInput').value.trim();
+      if (tokenVal) {
+        localStorage.setItem("STUDIO_PAT_TOKEN", tokenVal);
+      }
+    }
 
     function previewVoice() {
       const narasi = document.getElementById('narasiInput').value || "Ini adalah contoh suara AI.";
@@ -430,6 +451,15 @@
     }
 
     async function triggerGitHubRender() {
+      const GITHUB_TOKEN = document.getElementById('userTokenInput').value.trim() || localStorage.getItem("STUDIO_PAT_TOKEN");
+
+      if (!GITHUB_TOKEN) {
+        alert("Harap masukkan Token PAT GitHub Anda terlebih dahulu!");
+        return;
+      }
+
+      saveTokenLocally();
+
       const prompt = document.getElementById('promptInput').value.trim();
       const narasi = document.getElementById('narasiInput').value.trim();
       const voice_b1 = document.getElementById('voiceB1Input').value;
@@ -482,7 +512,7 @@
         if (response.ok) {
           status.innerHTML = "🔄 <b>Server sedang merender video v3.0...</b><br>Estimasi waktu: 60-90 detik.";
           startProgressBar();
-          checkWorkflowStatus();
+          checkWorkflowStatus(GITHUB_TOKEN);
         } else {
           status.innerHTML = "❌ Gagal memicu rendering. Periksa token atau repositori.";
           renderBtn.disabled = false;
@@ -508,7 +538,7 @@
       }, 1000);
     }
 
-    async function checkWorkflowStatus() {
+    async function checkWorkflowStatus(token) {
       const status = document.getElementById('statusTxt');
       const renderBtn = document.getElementById('renderBtn');
       const videoBox = document.getElementById('videoBox');
@@ -520,7 +550,7 @@
       const interval = setInterval(async () => {
         try {
           const res = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/actions/runs?per_page=1`, {
-            headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}` }
+            headers: { 'Authorization': `Bearer ${token}` }
           });
           const data = await res.json();
           const latestRun = data.workflow_runs[0];
@@ -531,13 +561,13 @@
 
             if (latestRun.conclusion === "success") {
               const jobsRes = await fetch(latestRun.jobs_url, {
-                headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}` }
+                headers: { 'Authorization': `Bearer ${token}` }
               });
               const jobsData = await jobsRes.json();
               const jobId = jobsData.jobs[0].id;
 
               const logRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/actions/jobs/${jobId}/logs`, {
-                headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}` }
+                headers: { 'Authorization': `Bearer ${token}` }
               });
               
               if (logRes.ok) {
