@@ -9,7 +9,7 @@ from moviepy.editor import (
     TextClip, 
     CompositeVideoClip, 
     concatenate_videoclips, 
-    CompositeAudioClip  # Perbaikan: Menggunakan CamelCase agar tidak error di MoviePy 1.0.3
+    CompositeAudioClip
 )
 
 # ---------------------------------------------------------
@@ -119,15 +119,15 @@ except Exception as err:
     sys.exit(1)
 
 # ---------------------------------------------------------
-# 5. UPLOAD KE CATBOX.MOE (WITH FALLBACK TO TMPFILES)
+# 5. UPLOAD KE CLOUD (DIRECT LINK ONLY - NO ADS)
 # ---------------------------------------------------------
 def upload_file_to_cloud(file_path):
-    print(f"📤 Mengunggah {file_path} ke Catbox.moe...")
+    print(f"📤 Mengunggah {file_path} ke server cloud...")
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
-    
-    # Opsi 1: Catbox.moe
+
+    # Opsi 1: Catbox.moe (Direct Link Media Murni - Bebas Iklan)
     try:
         with open(file_path, 'rb') as f:
             res = requests.post(
@@ -138,35 +138,51 @@ def upload_file_to_cloud(file_path):
                 timeout=60
             )
         if res.status_code == 200 and res.text.startswith("http"):
+            print("✅ Berhasil unggah ke Catbox (Direct Link)!")
             return res.text.strip()
         else:
-            print(f"⚠️ Catbox HTTP Status: {res.status_code}. Beralih ke server cadangan...")
+            print(f"⚠️ Catbox Status: {res.status_code}. Mencoba cadangan...")
     except Exception as e:
-        print(f"⚠️ Kesalahan Catbox: {e}")
+        print(f"⚠️ Catbox Error: {e}")
 
-    # Opsi 2: Tmpfiles.org (Host Cadangan)
-    print("🔄 Mengalihkan unggahan ke server cadangan Tmpfiles.org...")
+    # Opsi 2: File.io (Direct File Link - Bebas Pop-up/Iklan)
+    print("🔄 Mengalihkan ke File.io...")
+    try:
+        with open(file_path, 'rb') as f:
+            res = requests.post('https://file.io', files={'file': f}, timeout=60)
+            if res.status_code == 200:
+                data = res.json()
+                if data.get('success'):
+                    direct_url = data['link']
+                    print(f"✅ Berhasil unggah ke File.io: {direct_url}")
+                    return direct_url
+    except Exception as e:
+        print(f"⚠️ File.io Error: {e}")
+
+    # Opsi 3: Tmpfiles (Memaksa /dl/ Direct File Link agar bebas landing page)
+    print("🔄 Mengalihkan ke Tmpfiles Direct Download...")
     try:
         with open(file_path, 'rb') as f:
             res = requests.post('https://tmpfiles.org/api/v1/upload', files={'file': f}, timeout=60)
             if res.status_code == 200:
                 data = res.json()
                 raw_url = data['data']['url']
-                # Mengubah URL pratinjau menjadi URL unduhan langsung
+                # Mengubah /tmpfiles.org/ menjadi /tmpfiles.org/dl/ untuk direct file
                 direct_url = raw_url.replace('tmpfiles.org/', 'tmpfiles.org/dl/')
+                print(f"✅ Berhasil unggah ke Tmpfiles Direct: {direct_url}")
                 return direct_url
     except Exception as e:
-        print(f"❌ Kesalahan Tmpfiles: {e}")
+        print(f"⚠️ Tmpfiles Error: {e}")
 
     return None
 
 final_video_url = upload_file_to_cloud(output_filename)
 
 if not final_video_url or not final_video_url.startswith("http"):
-    print("❌ Gagal mendapatkan URL publik dari semua server hosting. Exit.")
+    print("❌ Gagal mendapatkan URL publik dari seluruh server hosting. Exit.")
     sys.exit(1)
 
-print(f"\n🎉 UPLOAD SUKSES: {final_video_url}\n")
+print(f"\n🎉 UPLOAD DIRECT LINK SUKSES: {final_video_url}\n")
 
 # Tulis URL aktif ke file result.json
 result_payload = {
