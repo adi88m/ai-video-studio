@@ -572,23 +572,37 @@
             renderBtn.disabled = false;
 
             if (latestRun.conclusion === "success") {
-              // BACA DIRECT DARI FILE result.json TANPA PERLU LOG PERMISSIONS
-              const resultRes = await fetch(`https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/main/result.json?t=${new Date().getTime()}`);
-              
-              if (resultRes.ok) {
-                const resultData = await resultRes.json();
-                if (resultData.url) {
-                  progressBar.style.width = "100%";
-                  setTimeout(() => { progressContainer.style.display = "none"; }, 1000);
-
-                  status.innerHTML = "✅ <b>Rendering Selesai!</b> Video kamu siap diputar dan diunduh.";
-                  videoPlayer.src = resultData.url;
-                  downloadBtn.href = resultData.url;
-                  videoBox.style.display = "block";
-                  return;
+              // 1. OPSI UTAMA: BACA DIRECT DARI RAW RESULT.JSON
+              try {
+                const resultRes = await fetch(`https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/main/result.json?t=${new Date().getTime()}`);
+                if (resultRes.ok) {
+                  const resultData = await resultRes.json();
+                  if (resultData.url) {
+                    showSuccessVideo(resultData.url);
+                    return;
+                  }
                 }
-              }
-              status.innerHTML = "⚠️ Video selesai dirender, tetapi file result.json belum terdeteksi.";
+              } catch(e) {}
+
+              // 2. OPSI FALLBACK: BACA VIA API COMMIT REPOS KETIKA RAW DELAY CACHE
+              try {
+                const commitRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/commits/main`, {
+                  headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (commitRes.ok) {
+                  const commitData = await commitRes.json();
+                  const rawRes = await fetch(`https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/${commitData.sha}/result.json`);
+                  if (rawRes.ok) {
+                    const rawJson = await rawRes.json();
+                    if (rawJson.url) {
+                      showSuccessVideo(rawJson.url);
+                      return;
+                    }
+                  }
+                }
+              } catch(e) {}
+
+              status.innerHTML = "⚠️ Video selesai dirender! Buka file result.json di repositori GitHub kamu untuk mengambil link video Catbox.";
             } else {
               status.innerHTML = "❌ Rendering gagal di server. Silakan coba lagi.";
             }
@@ -598,6 +612,15 @@
           console.error(e);
         }
       }, 7000);
+
+      function showSuccessVideo(url) {
+        progressBar.style.width = "100%";
+        setTimeout(() => { progressContainer.style.display = "none"; }, 1000);
+        status.innerHTML = "✅ <b>Rendering Selesai!</b> Video kamu siap diputar dan diunduh.";
+        videoPlayer.src = url;
+        downloadBtn.href = url;
+        videoBox.style.display = "block";
+      }
     }
   </script>
 </body>
