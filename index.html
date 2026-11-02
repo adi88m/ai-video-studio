@@ -495,7 +495,6 @@
       renderBtn.disabled = true;
       status.innerHTML = "⏳ Mengirim sinyal & konfigurasi ke server cloud...";
 
-      // DI-RINGKAS MENJADI HANYA 8 PROPERTI UNTUK MEMENUHI BATASAN MAKSIMAL 10 DARI GITHUB API
       const payloadData = {
         prompt: prompt,
         narasi: narasi,
@@ -587,7 +586,8 @@
               
               if (logRes.ok) {
                 const logText = await logRes.text();
-                const match = logText.match(/CATBOX_URL_RESULT:(https:\/\/files\.catbox\.moe\/[^\s\r\n]+)/);
+                // REGEX FLEKSIBEL: Mendeteksi link catbox di mana pun berada di dalam teks log
+                const match = logText.match(/(https:\/\/files\.catbox\.moe\/[^\s\r\n"']+)/);
 
                 if (match && match[1]) {
                   const directVideoUrl = match[1].trim();
