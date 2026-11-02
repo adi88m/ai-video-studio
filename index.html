@@ -188,6 +188,7 @@
       color: #a5b4fc; 
       border: 1px solid rgba(99, 102, 241, 0.2); 
       line-height: 1.5; 
+      word-break: break-word;
     }
 
     .progress-bar-container { 
@@ -397,7 +398,6 @@
     const GITHUB_USERNAME = "adi88m";               
     const GITHUB_REPO     = "ai-video-studio"; 
 
-    // Memuat token tersimpan dari localStorage saat halaman dibuka
     window.addEventListener('DOMContentLoaded', () => {
       const savedToken = localStorage.getItem("STUDIO_PAT_TOKEN");
       if (savedToken) {
@@ -514,12 +514,14 @@
           startProgressBar();
           checkWorkflowStatus(GITHUB_TOKEN);
         } else {
-          status.innerHTML = "❌ Gagal memicu rendering. Periksa token atau repositori.";
+          // Solusi B: Tangkap & tampilkan kode status HTTP dan pesan error asli
+          const errorDetail = await response.json().catch(() => ({ message: "Tidak ada rincian pesan error" }));
+          status.innerHTML = `❌ <b>Gagal Memicu (HTTP Status: ${response.status})</b><br><small style="color:#f87171">Pesan Server: ${errorDetail.message || 'Unknown'}</small>`;
           renderBtn.disabled = false;
           progressContainer.style.display = "none";
         }
       } catch (err) {
-        status.innerHTML = "❌ Terjadi kesalahan: " + err.message;
+        status.innerHTML = "❌ Terjadi kesalahan koneksi: " + err.message;
         renderBtn.disabled = false;
         progressContainer.style.display = "none";
       }
