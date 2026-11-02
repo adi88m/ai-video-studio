@@ -559,9 +559,11 @@
       const progressContainer = document.getElementById('progressContainer');
       const progressBar = document.getElementById('progressBar');
 
+      let attempts = 0;
+      const maxAttempts = 12;
+
       const interval = setInterval(async () => {
         try {
-          // Ambil status workflow terbaru
           const res = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/actions/runs?per_page=1`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
@@ -569,55 +571,49 @@
           const latestRun = data.workflow_runs[0];
 
           if (latestRun && latestRun.status === "completed") {
-            clearInterval(interval);
-            renderBtn.disabled = false;
-
             if (latestRun.conclusion === "success") {
-              // MEKANISME REAL-TIME: Ambil langsung dari GitHub Contents API untuk menembus CDN Cache
-              try {
-                const fileApiRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/result.json?t=${new Date().getTime()}`, {
-                  headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                  }
-                });
 
-                if (fileApiRes.ok) {
-                  const fileApiData = await fileApiRes.json();
-                  const decodedContent = decodeURIComponent(escape(atob(fileApiData.content)));
-                  const jsonParsed = JSON.parse(decodedContent);
-
-                  if (jsonParsed.url && jsonParsed.url.startsWith("http")) {
-                    showSuccessVideo(jsonParsed.url);
-                    return;
+              // MEKANISME DINAMIS: PEMINDAIAN COMMIT HASH UNTUK MENEMBUS CACHE CDN 100%
+              const commitsRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/commits?per_page=5`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+              
+              if (commitsRes.ok) {
+                const commits = await commitsRes.json();
+                
+                for (let commit of commits) {
+                  const rawRes = await fetch(`https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/${commit.sha}/result.json`);
+                  if (rawRes.ok) {
+                    const rawJson = await rawRes.json();
+                    if (rawJson.url && rawJson.url.startsWith("http")) {
+                      clearInterval(interval);
+                      renderBtn.disabled = false;
+                      showSuccessVideo(rawJson.url);
+                      return;
+                    }
                   }
                 }
-              } catch(e) {
-                console.error("Gagal baca via API Contents:", e);
               }
 
-              // Fallback Raw CDN jika API gagal
-              try {
-                const rawRes = await fetch(`https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/main/result.json?nocache=${Math.random()}`);
-                if (rawRes.ok) {
-                  const rawJson = await rawRes.json();
-                  if (rawJson.url && rawJson.url.startsWith("http")) {
-                    showSuccessVideo(rawJson.url);
-                    return;
-                  }
-                }
-              } catch(e) {}
+              attempts++;
+              if (attempts >= maxAttempts) {
+                clearInterval(interval);
+                renderBtn.disabled = false;
+                progressContainer.style.display = "none";
+                status.innerHTML = "⚠️ Video selesai dirender! Buka repositori GitHub untuk melihat file <code>result.json</code>.";
+              }
 
-              status.innerHTML = "⚠️ Video selesai dirender, namun link belum dapat dibaca. Coba tekan F5 / Refresh.";
             } else {
-              status.innerHTML = "❌ Rendering gagal di server. Silakan cek log di repositori.";
+              clearInterval(interval);
+              renderBtn.disabled = false;
+              progressContainer.style.display = "none";
+              status.innerHTML = "❌ Rendering gagal di server. Silakan periksa log di tab Actions.";
             }
-            progressContainer.style.display = "none";
           }
         } catch (e) {
           console.error(e);
         }
-      }, 7000);
+      }, 5000);
 
       function showSuccessVideo(url) {
         progressBar.style.width = "100%";
