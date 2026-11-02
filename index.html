@@ -495,6 +495,20 @@
       renderBtn.disabled = true;
       status.innerHTML = "⏳ Mengirim sinyal & konfigurasi ke server cloud...";
 
+      // DI-RINGKAS MENJADI HANYA 8 PROPERTI UNTUK MEMENUHI BATASAN MAKSIMAL 10 DARI GITHUB API
+      const payloadData = {
+        prompt: prompt,
+        narasi: narasi,
+        voice: voice,
+        aspect: aspect,
+        style: style,
+        bgm: bgm,
+        lipsync: lipsync,
+        extra: JSON.stringify({
+          voice_b1, narasi_b1, prompt2, narasi2, motion, resolution, watermark
+        })
+      };
+
       try {
         const response = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/dispatches`, {
           method: 'POST',
@@ -505,7 +519,7 @@
           },
           body: JSON.stringify({
             event_type: 'generate_video',
-            client_payload: { prompt, narasi, voice_b1, narasi_b1, prompt2, narasi2, voice, aspect, motion, style, bgm, lipsync, resolution, watermark }
+            client_payload: payloadData
           })
         });
 
@@ -514,7 +528,6 @@
           startProgressBar();
           checkWorkflowStatus(GITHUB_TOKEN);
         } else {
-          // Solusi B: Tangkap & tampilkan kode status HTTP dan pesan error asli
           const errorDetail = await response.json().catch(() => ({ message: "Tidak ada rincian pesan error" }));
           status.innerHTML = `❌ <b>Gagal Memicu (HTTP Status: ${response.status})</b><br><small style="color:#f87171">Pesan Server: ${errorDetail.message || 'Unknown'}</small>`;
           renderBtn.disabled = false;
