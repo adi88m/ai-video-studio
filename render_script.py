@@ -58,7 +58,6 @@ print("==========================================")
 # ---------------------------------------------------------
 # 2. GENERATE GAMBAR VIA POLLINATIONS AI
 # ---------------------------------------------------------
-# Tentukan resolusi gambar berdasarkan aspek rasio
 width, height = (720, 1280) if aspect == '9:16' else (1280, 720)
 enhanced_prompt = f"{prompt}, {style} style, highly detailed, 8k resolution"
 encoded_prompt = urllib.parse.quote(enhanced_prompt)
@@ -120,44 +119,65 @@ except Exception as err:
     sys.exit(1)
 
 # ---------------------------------------------------------
-# 5. UPLOAD KE CATBOX.MOE & UPDATE RESULT.JSON
+# 5. UPLOAD KE CATBOX.MOE (WITH FALLBACK TO TMPFILES)
 # ---------------------------------------------------------
-def upload_to_catbox(file_path):
+def upload_file_to_cloud(file_path):
     print(f"📤 Mengunggah {file_path} ke Catbox.moe...")
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
+    
+    # Opsi 1: Catbox.moe
     try:
         with open(file_path, 'rb') as f:
             res = requests.post(
                 'https://catbox.moe/user/api.php',
+                headers=headers,
                 data={'reqtype': 'fileupload'},
                 files={'fileToUpload': f},
-                timeout=90
+                timeout=60
             )
-        if res.status_code == 200:
+        if res.status_code == 200 and res.text.startswith("http"):
             return res.text.strip()
         else:
-            print(f"❌ Catbox HTTP Error: {res.status_code}")
+            print(f"⚠️ Catbox HTTP Status: {res.status_code}. Beralih ke server cadangan...")
     except Exception as e:
-        print(f"❌ Kesalahan saat unggah Catbox: {e}")
+        print(f"⚠️ Kesalahan Catbox: {e}")
+
+    # Opsi 2: Tmpfiles.org (Host Cadangan)
+    print("🔄 Mengalihkan unggahan ke server cadangan Tmpfiles.org...")
+    try:
+        with open(file_path, 'rb') as f:
+            res = requests.post('https://tmpfiles.org/api/v1/upload', files={'file': f}, timeout=60)
+            if res.status_code == 200:
+                data = res.json()
+                raw_url = data['data']['url']
+                # Mengubah URL pratinjau menjadi URL unduhan langsung
+                direct_url = raw_url.replace('tmpfiles.org/', 'tmpfiles.org/dl/')
+                return direct_url
+    except Exception as e:
+        print(f"❌ Kesalahan Tmpfiles: {e}")
+
     return None
 
-catbox_url = upload_to_catbox(output_filename)
+final_video_url = upload_file_to_cloud(output_filename)
 
-if not catbox_url or not catbox_url.startswith("http"):
-    print("❌ Gagal mendapatkan URL publik dari Catbox. Exit.")
+if not final_video_url or not final_video_url.startswith("http"):
+    print("❌ Gagal mendapatkan URL publik dari semua server hosting. Exit.")
     sys.exit(1)
 
-print(f"\n🎉 UPLOAD CATBOX SUKSES: {catbox_url}\n")
+print(f"\n🎉 UPLOAD SUKSES: {final_video_url}\n")
 
 # Tulis URL aktif ke file result.json
 result_payload = {
     "status": "success",
-    "url": catbox_url
+    "url": final_video_url
 }
 
 with open("result.json", "w", encoding="utf-8") as f:
     json.dump(result_payload, f, indent=2)
 
 print("==========================================")
-print(f"CATBOX_URL_RESULT:{catbox_url}")
+print(f"CATBOX_URL_RESULT:{final_video_url}")
 print("==========================================")
 print("✅ `result.json` berhasil diperbarui.")
