@@ -31,7 +31,6 @@
       padding: clamp(8px, 2vw, 24px); 
     }
 
-    /* AUTO SCREEN SIZE CONTAINER */
     .container { 
       width: 100%; 
       max-width: 1200px; 
@@ -70,7 +69,6 @@
       width: 100%;
     }
 
-    /* AUTO GRID LAYOUT */
     .grid-2 { 
       display: grid; 
       grid-template-columns: 1fr; 
@@ -254,7 +252,7 @@
       <p style="color:var(--text-muted); font-size:13px; margin-top:4px;">Lip-Sync, Dialog Multi-Character, & Templat Cerita</p>
     </div>
 
-    <!-- TEMPLAT CERITA ONETOUCH -->
+    <!-- TEMPLAT CERITA -->
     <div class="template-bar">
       <button class="btn-template" onclick="applyTemplate('horor')">👻 Templat Horor</button>
       <button class="btn-template" onclick="applyTemplate('edukasi')">💡 Templat Edukasi</button>
@@ -574,35 +572,23 @@
             renderBtn.disabled = false;
 
             if (latestRun.conclusion === "success") {
-              const jobsRes = await fetch(latestRun.jobs_url, {
-                headers: { 'Authorization': `Bearer ${token}` }
-              });
-              const jobsData = await jobsRes.json();
-              const jobId = jobsData.jobs[0].id;
-
-              const logRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/actions/jobs/${jobId}/logs`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-              });
+              // BACA DIRECT DARI FILE result.json TANPA PERLU LOG PERMISSIONS
+              const resultRes = await fetch(`https://raw.githubusercontent.com/${GITHUB_USERNAME}/${GITHUB_REPO}/main/result.json?t=${new Date().getTime()}`);
               
-              if (logRes.ok) {
-                const logText = await logRes.text();
-                // REGEX FLEKSIBEL: Mendeteksi link catbox di mana pun berada di dalam teks log
-                const match = logText.match(/(https:\/\/files\.catbox\.moe\/[^\s\r\n"']+)/);
-
-                if (match && match[1]) {
-                  const directVideoUrl = match[1].trim();
+              if (resultRes.ok) {
+                const resultData = await resultRes.json();
+                if (resultData.url) {
                   progressBar.style.width = "100%";
                   setTimeout(() => { progressContainer.style.display = "none"; }, 1000);
 
                   status.innerHTML = "✅ <b>Rendering Selesai!</b> Video kamu siap diputar dan diunduh.";
-                  videoPlayer.src = directVideoUrl;
-                  downloadBtn.href = directVideoUrl;
+                  videoPlayer.src = resultData.url;
+                  downloadBtn.href = resultData.url;
                   videoBox.style.display = "block";
                   return;
                 }
               }
-
-              status.innerHTML = "⚠️ Video selesai dirender, tetapi URL gagal dimuat dari log.";
+              status.innerHTML = "⚠️ Video selesai dirender, tetapi file result.json belum terdeteksi.";
             } else {
               status.innerHTML = "❌ Rendering gagal di server. Silakan coba lagi.";
             }
