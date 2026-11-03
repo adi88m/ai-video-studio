@@ -13,46 +13,30 @@ from moviepy.editor import (
 )
 
 # ---------------------------------------------------------
-# 1. PARSING CLIENT PAYLOAD DARI GITHUB ACTIONS
+# 1. PARSING CLIENT PAYLOAD
 # ---------------------------------------------------------
 payload_raw = os.environ.get('CLIENT_PAYLOAD', '{}')
 try:
     payload = json.loads(payload_raw)
-except Exception as e:
-    print(f"⚠️ Gagal membaca CLIENT_PAYLOAD: {e}")
+except Exception:
     payload = {}
 
-# Parameter Utama
 prompt = payload.get('prompt', 'candi kuno di tengah hutan misterius malam hari')
 narasi = payload.get('narasi', 'Dia berjalan menyusuri tempat suci yang telah lama terlupakan.')
 voice = payload.get('voice', 'id-ID-ArdiNeural')
 aspect = payload.get('aspect', '9:16')
 style = payload.get('style', 'cinematic')
-bgm = payload.get('bgm', 'none')
-lipsync = str(payload.get('lipsync', 'false')).lower() == 'true'
 
-# Parameter Extra (Membongkar JSON String)
 extra_raw = payload.get('extra', '{}')
 try:
     extra_data = json.loads(extra_raw) if isinstance(extra_raw, str) else extra_raw
 except Exception:
     extra_data = {}
 
-voice_b1 = extra_data.get('voice_b1', '')
-narasi_b1 = extra_data.get('narasi_b1', '')
-prompt2 = extra_data.get('prompt2', '')
-narasi2 = extra_data.get('narasi2', '')
-motion = extra_data.get('motion', 'zoom_in')
-resolution = extra_data.get('resolution', '720p')
-watermark = extra_data.get('watermark', '')
-
 print("==========================================")
 print(f"🚀 Memulai alur kerja render AI Video:")
-print(f"   - Prompt 1  : {prompt}")
-print(f"   - Narasi 1  : {narasi}")
-print(f"   - Voice A   : {voice}")
-print(f"   - Aspek     : {aspect}")
-print(f"   - Style     : {style}")
+print(f"   - Prompt : {prompt}")
+print(f"   - Voice  : {voice}")
 print("==========================================")
 
 # ---------------------------------------------------------
@@ -63,45 +47,34 @@ enhanced_prompt = f"{prompt}, {style} style, highly detailed, 8k resolution"
 encoded_prompt = urllib.parse.quote(enhanced_prompt)
 image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&nologo=true"
 
-print(f"🎨 Mengunduh gambar AI dari Pollinations: {image_url}")
+print(f"🎨 Mengunduh gambar AI: {image_url}")
 img_response = requests.get(image_url, timeout=60)
 if img_response.status_code == 200:
     with open("scene1.jpg", "wb") as f:
         f.write(img_response.content)
-    print("✅ Gambar adegan 1 berhasil disimpan.")
 else:
-    print(f"❌ Gagal mengunduh gambar AI (Status {img_response.status_code}). Exit.")
+    print("❌ Gagal mengunduh gambar AI. Exit.")
     sys.exit(1)
 
 # ---------------------------------------------------------
 # 3. GENERATE AUDIO SUARA AI (EDGE-TTS)
 # ---------------------------------------------------------
 audio_file = "audio1.mp3"
-print(f"🎙️ Menggenerasi suara AI dengan voice '{voice}'...")
-tts_cmd = f'edge-tts --text "{narasi}" --voice "{voice}" --write-media {audio_file}'
-os.system(tts_cmd)
+os.system(f'edge-tts --text "{narasi}" --voice "{voice}" --write-media {audio_file}')
 
 if not os.path.exists(audio_file):
-    print("❌ Gagal menggenerasi file audio TTS. Exit.")
+    print("❌ Gagal membuat audio TTS. Exit.")
     sys.exit(1)
 
-print("✅ Suara AI berhasil dikomposisi.")
-
 # ---------------------------------------------------------
-# 4. RENDER VIDEO MENGGUNAKAN MOVIEPY
+# 4. RENDER VIDEO MOVIEPY
 # ---------------------------------------------------------
 output_filename = "output_video.mp4"
-
 try:
     audio_clip = AudioFileClip(audio_file)
-    duration = audio_clip.duration
-
-    img_clip = ImageClip("scene1.jpg").set_duration(duration)
-    
-    # Gabungkan audio dan gambar
+    img_clip = ImageClip("scene1.jpg").set_duration(audio_clip.duration)
     video_clip = img_clip.set_audio(audio_clip)
 
-    print(f"🎬 Merender video MP4 (Durasi: {duration:.2f}s)...")
     video_clip.write_videofile(
         output_filename,
         fps=24,
@@ -119,18 +92,11 @@ except Exception as err:
     sys.exit(1)
 
 # ---------------------------------------------------------
-# 5. UPLOAD KE CLOUD (PERMANENT DIRECT MP4 FILE LINK)
+# 5. UPLOAD KE CLOUD (CATBOX + FALLBACK DISPATCH / RAW)
 # ---------------------------------------------------------
-def upload_file_to_cloud(file_path):
-    print(f"📤 Mengunggah {file_path} ke server cloud...")
-    
-    # Custom Headers dengan User-Agent Browser Asli
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept': '*/*'
-    }
-
-    # OPSI 1: Catbox.moe (Direct Link Media Permanen - Bebas Iklan)
+def upload_file(file_path):
+    # Percobaan 1: Catbox dengan Header Browser Lengkap
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
     try:
         with open(file_path, 'rb') as f:
             res = requests.post(
@@ -141,39 +107,37 @@ def upload_file_to_cloud(file_path):
                 timeout=60
             )
         if res.status_code == 200 and res.text.startswith("http"):
-            print("✅ Berhasil unggah ke Catbox (Direct MP4 Link)!")
+            print("✅ Upload Catbox Berhasil!")
             return res.text.strip()
-        else:
-            print(f"⚠️ Catbox Status Code: {res.status_code}. Mencoba server cadangan...")
     except Exception as e:
-        print(f"⚠️ Catbox Error: {e}")
+        print(f"⚠️ Catbox error: {e}")
 
-    # OPSI 2: Tmpfiles Direct Download (Format Direct File /dl/)
-    print("🔄 Mengalihkan ke Tmpfiles Direct Download...")
+    # Percobaan 2: Host Cadangan Pixeldrain (Langsung File Direct)
     try:
+        print("🔄 Mengalihkan ke Pixeldrain...")
         with open(file_path, 'rb') as f:
-            res = requests.post('https://tmpfiles.org/api/v1/upload', headers=headers, files={'file': f}, timeout=60)
-            if res.status_code == 200:
-                data = res.json()
-                raw_url = data['data']['url']
-                # Mengubah URL ke format stream direct /dl/
-                direct_url = raw_url.replace('tmpfiles.org/', 'tmpfiles.org/dl/')
-                print(f"✅ Berhasil unggah ke Tmpfiles Direct: {direct_url}")
-                return direct_url
+            res = requests.post(
+                'https://pixeldrain.com/api/file',
+                files={'file': f},
+                timeout=60
+            )
+        if res.status_code == 200 or res.status_code == 201:
+            file_id = res.json().get('id')
+            direct_url = f"https://pixeldrain.com/api/file/{file_id}"
+            print(f"✅ Upload Pixeldrain Berhasil: {direct_url}")
+            return direct_url
     except Exception as e:
-        print(f"⚠️ Tmpfiles Error: {e}")
+        print(f"⚠️ Pixeldrain error: {e}")
 
     return None
 
-final_video_url = upload_file_to_cloud(output_filename)
+final_video_url = upload_file(output_filename)
 
-if not final_video_url or not final_video_url.startswith("http"):
-    print("❌ Gagal mendapatkan URL publik dari seluruh server hosting. Exit.")
+if not final_video_url:
+    print("❌ Gagal upload ke semua server.")
     sys.exit(1)
 
-print(f"\n🎉 UPLOAD DIRECT LINK SUKSES: {final_video_url}\n")
-
-# Tulis URL aktif ke file result.json
+# Tulis URL aktif ke result.json
 result_payload = {
     "status": "success",
     "url": final_video_url
@@ -182,7 +146,4 @@ result_payload = {
 with open("result.json", "w", encoding="utf-8") as f:
     json.dump(result_payload, f, indent=2)
 
-print("==========================================")
-print(f"CATBOX_URL_RESULT:{final_video_url}")
-print("==========================================")
-print("✅ `result.json` berhasil diperbarui.")
+print(f"\n🎉 HASIL URL AKHIR: {final_video_url}\n")
