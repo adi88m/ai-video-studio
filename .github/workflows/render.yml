@@ -33,11 +33,26 @@ jobs:
           pip install requests edge-tts moviepy==1.0.3 pillow imageio-ffmpeg
           python render_script.py
 
-      - name: Commit & Push Result JSON
+      - name: Upload Video to GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "latest-render"
+          name: "Latest Rendered Video"
+          files: output_video.mp4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate result.json & Commit
         if: always()
         run: |
+          # Buat link direct download resmi dari GitHub Release
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/latest-render/output_video.mp4"
+          
+          echo "{\"status\": \"success\", \"url\": \"$RELEASE_URL\"}" > result.json
+          
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add result.json
-          git commit -m "Update render result [skip ci]" || exit 0
+          git commit -m "Update render result with GitHub Release asset [skip ci]" || exit 0
           git push
