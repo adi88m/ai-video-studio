@@ -1,3 +1,30 @@
+name: AI Video Renderer
+
+on:
+  repository_dispatch:
+    types: [generate_video]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
       - name: Install Python Packages & Run Generator
         env:
           CLIENT_PAYLOAD: ${{ toJson(github.event.client_payload) }}
@@ -5,3 +32,26 @@
           python -m pip install --upgrade pip
           pip install requests edge-tts moviepy==1.0.3 pillow imageio-ffmpeg numpy scipy
           python render_script.py
+
+      - name: Upload Video to Unique GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "render-${{ github.run_id }}"
+          name: "Rendered Video ${{ github.run_id }}"
+          files: output_video.mp4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate result.json & Commit
+        if: always()
+        run: |
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/render-${{ github.run_id }}/output_video.mp4"
+          
+          echo "{\"status\": \"success\", \"url\": \"$RELEASE_URL\"}" > result.json
+          
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add result.json
+          git commit -m "Update render result with unique Release asset [skip ci]" || exit 0
+          git push
