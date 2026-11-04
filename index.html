@@ -121,6 +121,7 @@
     }
 
         async function pollResult(token) {
+      co    async function pollResult(token) {
       const status = document.getElementById('statusTxt');
       const renderBtn = document.getElementById('renderBtn');
       const videoBox = document.getElementById('videoBox');
@@ -143,26 +144,34 @@
               renderBtn.disabled = false;
 
               if (latestRun.conclusion === "success") {
-                const resultRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/result.json?t=${new Date().getTime()}`, {
+                status.innerHTML = "📥 Memuat stream video ke HP...";
+                
+                // Ambil release asset via GitHub API Auth agar repositori private tidak 404
+                const releaseRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/releases/tags/v${latestRun.id}`, {
                   headers: { 'Authorization': `Bearer ${token}` }
                 });
-                const resultData = await resultRes.json();
-                const jsonContent = JSON.parse(decodeURIComponent(escape(atob(resultData.content))));
+                const releaseData = await releaseRes.json();
+                const asset = releaseData.assets.find(a => a.name === "output_video.mp4");
 
-                status.innerHTML = "✅ <b>Rendering Selesai!</b> Video baru siap diputar.";
-                
-                // Ambil blob URL dari GitHub API jika repositori Private
-                const mediaApiRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/video_${latestRun.id}.mp4`, {
-                  headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3.raw' }
-                });
-                
-                const blob = await mediaApiRes.blob();
-                const videoObjectURL = URL.createObjectURL(blob);
+                if (asset && asset.id) {
+                  const mediaRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/releases/assets/${asset.id}`, {
+                    headers: { 
+                      'Authorization': `Bearer ${token}`,
+                      'Accept': 'application/octet-stream'
+                    }
+                  });
 
-                videoPlayer.src = videoObjectURL;
-                downloadBtn.href = videoObjectURL;
-                downloadBtn.setAttribute("download", `ai-video-${latestRun.id}.mp4`);
-                videoBox.style.display = "block";
+                  const blob = await mediaRes.blob();
+                  const videoObjectURL = URL.createObjectURL(blob);
+
+                  status.innerHTML = "✅ <b>Rendering Selesai!</b> Video siap diputar dan diunduh.";
+                  videoPlayer.src = videoObjectURL;
+                  downloadBtn.href = videoObjectURL;
+                  downloadBtn.setAttribute("download", `ai-video-${latestRun.id}.mp4`);
+                  videoBox.style.display = "block";
+                } else {
+                  status.innerHTML = "❌ Gagal menemukan file video di Release.";
+                }
               } else {
                 status.innerHTML = "❌ Render gagal di server. Cek log tab Actions.";
               }
@@ -171,7 +180,6 @@
         } catch (e) { console.error(e); }
       }, 6000);
     }
-
   </script>
 </body>
 </html>
