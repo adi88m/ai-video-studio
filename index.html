@@ -417,8 +417,8 @@
               if (latestRun.conclusion === "success") {
                 status.innerHTML = "📥 <b>Rendering selesai!</b> Mengunduh stream video ke HP...";
 
-                // Mengambil metadata Release Asset via API GitHub Auth
-                const releaseRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/releases/tags/v${latestRun.id}`, {
+                // MENGGUNAKAN TAG FORMAT "render-${latestRun.id}" DENGAN PRESISI
+                const releaseRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/releases/tags/render-${latestRun.id}`, {
                   headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
@@ -427,7 +427,6 @@
                   const asset = releaseData.assets.find(a => a.name === "output_video.mp4");
 
                   if (asset && asset.id) {
-                    // Mengambil binary blob MP4 langsung dari GitHub API
                     const mediaRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/releases/assets/${asset.id}`, {
                       headers: { 
                         'Authorization': `Bearer ${token}`,
