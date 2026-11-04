@@ -33,19 +33,25 @@ jobs:
           pip install requests edge-tts moviepy==1.0.3 pillow imageio-ffmpeg numpy scipy
           python render_script.py
 
-      - name: Commit & Push Rendered Video
+      - name: Upload Video to Unique GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "v${{ github.run_id }}"
+          name: "Rendered Video ${{ github.run_id }}"
+          files: output_video.mp4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Save Result JSON
         if: always()
         run: |
-          # Buat nama file unik berdasarkan timestamp agar tidak tertimpa cache
-          FILENAME="video_${{ github.run_id }}.mp4"
-          cp output_video.mp4 $FILENAME
-          
-          # Tulis URL media langsung
-          MEDIA_URL="https://raw.githubusercontent.com/${{ github.repository }}/main/$FILENAME"
-          echo "{\"status\": \"success\", \"url\": \"$MEDIA_URL\"}" > result.json
+          # URL Release Aset Publik Unik
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/v${{ github.run_id }}/output_video.mp4"
+          echo "{\"status\": \"success\", \"url\": \"$RELEASE_URL\", \"run_id\": \"${{ github.run_id }}\"}" > result.json
           
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add $FILENAME result.json
-          git commit -m "Add rendered video $FILENAME [skip ci]" || exit 0
+          git add result.json
+          git commit -m "Update render result v${{ github.run_id }} [skip ci]" || exit 0
           git push
