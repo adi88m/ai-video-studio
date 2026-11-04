@@ -120,7 +120,7 @@
       }
     }
 
-    async function pollResult(token) {
+        async function pollResult(token) {
       const status = document.getElementById('statusTxt');
       const renderBtn = document.getElementById('renderBtn');
       const videoBox = document.getElementById('videoBox');
@@ -131,14 +131,12 @@
 
       const interval = setInterval(async () => {
         try {
-          // Permintaan API diberi timestamp (?t=...) agar TIDAK TER-CACHE BROWSER
           const res = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/actions/runs?per_page=1&t=${new Date().getTime()}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           const data = await res.json();
           const latestRun = data.workflow_runs[0];
 
-          // Pastikan workflow run yang dibaca adalah run yang dibuat SETELAH klik tombol render
           if (latestRun && new Date(latestRun.created_at).getTime() >= startTime) {
             if (latestRun.status === "completed") {
               clearInterval(interval);
@@ -153,9 +151,17 @@
 
                 status.innerHTML = "✅ <b>Rendering Selesai!</b> Video baru siap diputar.";
                 
-                // Paksa pemutar video memuat URL baru tanpa cache
-                videoPlayer.src = jsonContent.url + "?cache_buster=" + new Date().getTime();
-                downloadBtn.href = jsonContent.url;
+                // Ambil blob URL dari GitHub API jika repositori Private
+                const mediaApiRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/video_${latestRun.id}.mp4`, {
+                  headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3.raw' }
+                });
+                
+                const blob = await mediaApiRes.blob();
+                const videoObjectURL = URL.createObjectURL(blob);
+
+                videoPlayer.src = videoObjectURL;
+                downloadBtn.href = videoObjectURL;
+                downloadBtn.setAttribute("download", `ai-video-${latestRun.id}.mp4`);
                 videoBox.style.display = "block";
               } else {
                 status.innerHTML = "❌ Render gagal di server. Cek log tab Actions.";
@@ -165,6 +171,7 @@
         } catch (e) { console.error(e); }
       }, 6000);
     }
+
   </script>
 </body>
 </html>
