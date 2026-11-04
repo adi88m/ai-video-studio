@@ -28,7 +28,6 @@ narasi1_a = payload.get('narasi', 'Dia berjalan menyusuri tempat suci yang telah
 voice_a = payload.get('voice', 'id-ID-ArdiNeural')
 aspect = payload.get('aspect', '9:16')
 style = payload.get('style', 'cinematic')
-bgm_choice = payload.get('bgm', 'none')
 
 voice_b = payload.get('voice_b1', '')
 narasi1_b = payload.get('narasi_b1', '')
@@ -38,48 +37,35 @@ narasi2 = payload.get('narasi2', '')
 w, h = (720, 1280) if aspect == '9:16' else (1280, 720)
 
 print("==========================================")
-print(f"🚀 AI Video Engine v3.0 SSML Mood Active")
-print(f"   - Style Visual & Mood : {style}")
-print(f"   - Voice A             : {voice_a}")
+print(f"🚀 AI Video Engine v3.0 Stable Active")
+print(f"   - Style Visual : {style}")
+print(f"   - Voice A      : {voice_a}")
 print("==========================================")
 
 # ---------------------------------------------------------
-# 2. HELPER: SSML MOOD ENGINE (BAHASA INDONESIA)
+# 2. GENERATOR TTS AMAN (STABLE EDGE-TTS CALL)
 # ---------------------------------------------------------
-def generate_ssml_tts(text, voice_name, style_visual, output_mp3):
-    """Mengubah narasi teks menjadi audio dengan intonasi emosi berbasis SSML."""
-    text_clean = text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-    
-    # Pengaturan Modulasi Suara Berdasarkan Mood/Style
-    if style_visual == "horror":
-        # Suara Mencekam: Tempo lambat (-18%) & Nada berat (-10%)
-        rate, pitch = "-18%", "-10%"
-    elif style_visual == "cyberpunk" or style_visual == "anime":
-        # Suara Enerjik: Tempo cepat (+10%) & Nada tinggi (+8%)
-        rate, pitch = "+10%", "+8%"
-    else:
-        # Suara Cinematic Standar: Menyesuaikan tempo sinematik (-5%)
-        rate, pitch = "-5%", "0%"
+def generate_audio_tts(text, voice_name, style_visual, output_mp3):
+    """Memanggil edge-tts secara langsung tanpa file XML yang memicu syntax error."""
+    if not text.strip():
+        return False
 
-    ssml_content = f"""<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='id-ID'>
-  <voice name='{voice_name}'>
-    <prosody rate='{rate}' pitch='{pitch}'>
-      {text_clean}
-    </prosody>
-  </voice>
-</speak>"""
+    # Pengaturan kecepatan dan nada berdasarkan mood/style visual
+    rate_param = "-15%" if style_visual == "horror" else ("+10%" if style_visual in ["cyberpunk", "anime"] else "+0%")
+    pitch_param = "-10Hz" if style_visual == "horror" else ("+5Hz" if style_visual in ["cyberpunk", "anime"] else "+0Hz")
 
-    # Simpan sebagai file XML sementara
-    ssml_file = f"temp_{random.randint(1000,9999)}.xml"
-    with open(ssml_file, "w", encoding="utf-8") as f:
-        f.write(ssml_content)
+    # Bersihkan kutipan dari teks agar tidak merusak perintah bash CLI
+    clean_text = text.replace('"', '\\"').replace("'", "")
 
-    # Eksekusi Edge-TTS menggunakan parameter SSML XML
-    os.system(f'edge-tts --xml "{ssml_file}" --write-media "{output_mp3}"')
-    
-    # Hapus file XML sementara
-    if os.path.exists(ssml_file):
-        os.remove(ssml_file)
+    cmd = f'edge-tts --text "{clean_text}" --voice "{voice_name}" --rate="{rate_param}" --pitch="{pitch_param}" --write-media "{output_mp3}"'
+    print(f"🗣️ Running TTS Command: {cmd}")
+    os.system(cmd)
+
+    if not os.path.exists(output_mp3) or os.path.getsize(output_mp3) == 0:
+        print(f"⚠️ Fallback TTS tanpa rate/pitch untuk {output_mp3}...")
+        os.system(f'edge-tts --text "{clean_text}" --voice "{voice_name}" --write-media "{output_mp3}"')
+
+    return os.path.exists(output_mp3)
 
 # ---------------------------------------------------------
 # 3. GENERATOR GAMBAR POLLINATIONS AI
@@ -103,6 +89,7 @@ def generate_ai_image(prompt_text, filename):
     seed = random.randint(10000, 99999)
     url = f"https://image.pollinations.ai/prompt/{encoded}?width={w}&height={h}&nologo=true&seed={seed}"
     
+    print(f"🎨 Generating Image ({filename}): {url}")
     try:
         res = requests.get(url, timeout=60)
         if res.status_code == 200:
@@ -141,21 +128,25 @@ def make_motion_clip(img_path, duration, mode="zoom_in"):
     return VideoClip(make_frame, duration=duration)
 
 # ---------------------------------------------------------
-# 5. PROSES ADEGAN 1 (SSML VOICE AUDIO & VISUAL BERGERAK)
+# 5. PROSES ADEGAN 1 (AUDIO A & B + VISUAL BERGERAK)
 # ---------------------------------------------------------
-print("🎬 Processing Scene 1 with SSML Emotion...")
+print("🎬 Processing Scene 1...")
 if not generate_ai_image(prompt1, "scene1.jpg"):
+    print("❌ Gagal membuat gambar adegan 1.")
     sys.exit(1)
 
-# Generate Audio SSML Karakter A
-generate_ssml_tts(narasi1_a, voice_a, style, "audio1_a.mp3")
+# Generate Audio TTS Karakter A
+if not generate_audio_tts(narasi1_a, voice_a, style, "audio1_a.mp3"):
+    print("❌ Gagal membuat audio Karakter A.")
+    sys.exit(1)
+
 audio_clips_1 = [AudioFileClip("audio1_a.mp3")]
 
-# Generate Audio SSML Karakter B (Jika diisi)
-if voice_b and narasi1_b:
-    print("🗣️ Generating Dialog Character B with SSML...")
-    generate_ssml_tts(narasi1_b, voice_b, style, "audio1_b.mp3")
-    audio_clips_1.append(AudioFileClip("audio1_b.mp3"))
+# Generate Audio TTS Karakter B (Jika diisi)
+if voice_b and narasi1_b.strip():
+    print("🗣️ Generating Dialog Character B...")
+    if generate_audio_tts(narasi1_b, voice_b, style, "audio1_b.mp3"):
+        audio_clips_1.append(AudioFileClip("audio1_b.mp3"))
 
 audio_scene_1 = concatenate_audioclips(audio_clips_1)
 duration_1 = audio_scene_1.duration
@@ -164,26 +155,24 @@ video_scene_1 = make_motion_clip("scene1.jpg", duration_1, mode="zoom_in").set_a
 all_scenes = [video_scene_1]
 
 # ---------------------------------------------------------
-# 6. PROSES ADEGAN 2
+# 6. PROSES ADEGAN 2 (JIKA DIISI)
 # ---------------------------------------------------------
 if prompt2.strip() and narasi2.strip():
-    print("🎬 Processing Scene 2 with SSML Emotion...")
-    if generate_ai_image(prompt2, "scene2.jpg"):
-        generate_ssml_tts(narasi2, voice_a, style, "audio2.mp3")
+    print("🎬 Processing Scene 2...")
+    if generate_ai_image(prompt2, "scene2.jpg") and generate_audio_tts(narasi2, voice_a, style, "audio2.mp3"):
         audio_scene_2 = AudioFileClip("audio2.mp3")
         duration_2 = audio_scene_2.duration
-        
         video_scene_2 = make_motion_clip("scene2.jpg", duration_2, mode="zoom_out").set_audio(audio_scene_2)
         all_scenes.append(video_scene_2)
 
 # ---------------------------------------------------------
-# 7. RENDER MP4
+# 7. EXPORT FINAL MP4
 # ---------------------------------------------------------
 final_video = concatenate_videoclips(all_scenes, method="compose")
 total_duration = final_video.duration
 
 output_filename = "output_video.mp4"
-print(f"📽️ Exporting Animation MP4 (Duration: {total_duration:.2f}s)...")
+print(f"📽️ Exporting MP4 (Duration: {total_duration:.2f}s)...")
 
 final_video.write_videofile(
     output_filename,
@@ -196,4 +185,4 @@ final_video.write_videofile(
 final_video.close()
 for sc in all_scenes: sc.close()
 
-print("✅ Complete SSML Emotional Video Rendered!")
+print("✅ Render MP4 Berhasil Dituntaskan!")
