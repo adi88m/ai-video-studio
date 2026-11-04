@@ -4,43 +4,236 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Video Studio Pro v3.0 Ultimate</title>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root { --bg-main: #0f172a; --card-bg: rgba(30, 41, 59, 0.7); --card-border: rgba(255, 255, 255, 0.08); --primary: #6366f1; --text-main: #f8fafc; }
+    :root { 
+      --bg-main: #0f172a; 
+      --card-bg: rgba(30, 41, 59, 0.75); 
+      --card-border: rgba(255, 255, 255, 0.1); 
+      --primary: #6366f1; 
+      --primary-hover: #4f46e5;
+      --text-main: #f8fafc; 
+      --text-muted: #94a3b8; 
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg-main); color: var(--text-main); min-height: 100vh; padding: 16px; }
-    .container { width: 100%; max-width: 800px; margin: 0 auto; }
-    .card { background: var(--card-bg); border: 1px solid var(--card-border); padding: 20px; border-radius: 16px; margin-bottom: 16px; }
-    .form-group { margin-bottom: 12px; }
-    label { font-weight: 600; display: block; margin-bottom: 6px; font-size: 13px; color: #cbd5e1; }
-    input[type="text"], input[type="password"], textarea, select { width: 100%; padding: 12px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--card-border); border-radius: 8px; color: var(--text-main); outline: none; }
-    .btn { width: 100%; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: #fff; border: none; padding: 14px; font-weight: 700; border-radius: 10px; cursor: pointer; }
-    .btn:disabled { opacity: 0.5; }
-    .btn-download { display: block; width: 100%; text-align: center; background: #10b981; color: #fff; text-decoration: none; padding: 14px; font-weight: 700; border-radius: 10px; margin-top: 12px; }
-    .status-box { display: none; margin-top: 14px; padding: 14px; border-radius: 10px; background: rgba(99, 102, 241, 0.1); text-align: center; font-size: 13px; color: #a5b4fc; }
-    .video-container { display: none; margin-top: 18px; }
-    video { width: 100%; max-height: 500px; border-radius: 12px; background: #000; }
+    body { 
+      font-family: 'Plus Jakarta Sans', sans-serif; 
+      background: var(--bg-main); 
+      color: var(--text-main); 
+      min-height: 100vh; 
+      padding: clamp(10px, 2vw, 24px); 
+    }
+    .container { width: 100%; max-width: 900px; margin: 0 auto; }
+    .header { text-align: center; margin-bottom: 24px; }
+    .badge { 
+      display: inline-block; 
+      padding: 4px 14px; 
+      background: rgba(99, 102, 241, 0.15); 
+      border: 1px solid rgba(99, 102, 241, 0.3); 
+      border-radius: 20px; 
+      color: #818cf8; 
+      font-size: 12px; 
+      font-weight: 700; 
+      margin-bottom: 8px; 
+      letter-spacing: 0.5px;
+    }
+    h1 { font-size: clamp(22px, 4vw, 34px); font-weight: 800; }
+    .card { 
+      background: var(--card-bg); 
+      backdrop-filter: blur(12px); 
+      border: 1px solid var(--card-border); 
+      padding: clamp(16px, 3vw, 28px); 
+      border-radius: 20px; 
+      box-shadow: 0 20px 40px -15px rgba(0,0,0,0.5);
+      margin-bottom: 20px; 
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    @media (min-width: 640px) { .grid-2 { grid-template-columns: repeat(2, 1fr); } }
+    .form-group { margin-bottom: 14px; width: 100%; }
+    label { 
+      font-weight: 600; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 6px; 
+      font-size: 13px; 
+      color: #cbd5e1; 
+    }
+    input[type="text"], input[type="password"], textarea, select { 
+      width: 100%; 
+      padding: 12px 14px; 
+      background: rgba(15, 23, 42, 0.7); 
+      border: 1px solid var(--card-border); 
+      border-radius: 10px; 
+      color: var(--text-main); 
+      font-family: inherit; 
+      font-size: 14px; 
+      outline: none; 
+      transition: all 0.2s ease;
+    }
+    input[type="text"]:focus, input[type="password"]:focus, textarea:focus, select:focus { 
+      border-color: var(--primary); 
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+    select option { background: #1e293b; color: #fff; }
+    .section-title { 
+      font-size: 15px; 
+      font-weight: 700; 
+      color: #818cf8; 
+      margin-bottom: 14px; 
+      border-bottom: 1px solid var(--card-border); 
+      padding-bottom: 8px; 
+      margin-top: 18px; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+    }
+    .btn { 
+      width: 100%; 
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%); 
+      color: #fff; 
+      border: none; 
+      padding: 15px; 
+      font-size: 16px; 
+      font-weight: 700; 
+      border-radius: 12px; 
+      cursor: pointer; 
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+      transition: all 0.2s ease;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-download { 
+      display: block; 
+      width: 100%; 
+      text-align: center; 
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+      color: #fff; 
+      text-decoration: none; 
+      padding: 15px; 
+      font-size: 15px; 
+      font-weight: 700; 
+      border-radius: 12px; 
+      margin-top: 14px; 
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+      transition: all 0.2s ease;
+    }
+    .btn-download:hover { opacity: 0.95; transform: translateY(-1px); }
+    .status-box { 
+      display: none; 
+      margin-top: 16px; 
+      padding: 16px; 
+      border-radius: 12px; 
+      background: rgba(99, 102, 241, 0.1); 
+      text-align: center; 
+      font-size: 14px; 
+      color: #a5b4fc; 
+      border: 1px solid rgba(99, 102, 241, 0.25); 
+      line-height: 1.5; 
+      word-break: break-word; 
+    }
+    .progress-bar-container { 
+      width: 100%; 
+      background: rgba(255, 255, 255, 0.08); 
+      height: 8px; 
+      border-radius: 6px; 
+      overflow: hidden; 
+      margin-top: 12px; 
+      display: none; 
+    }
+    .progress-bar { 
+      width: 0%; 
+      height: 100%; 
+      background: linear-gradient(90deg, #6366f1, #10b981); 
+      transition: width 1s linear; 
+    }
+    .video-container { display: none; margin-top: 20px; text-align: center; }
+    video { 
+      width: 100%; 
+      max-height: 550px; 
+      border-radius: 14px; 
+      border: 1px solid var(--card-border); 
+      background: #000; 
+      object-fit: contain; 
+    }
+    .template-bar { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 6px; }
+    .btn-template { 
+      background: rgba(255,255,255,0.05); 
+      border: 1px solid var(--card-border); 
+      color: #cbd5e1; 
+      padding: 8px 16px; 
+      border-radius: 20px; 
+      font-size: 12px; 
+      font-weight: 600;
+      cursor: pointer; 
+      white-space: nowrap; 
+      transition: all 0.2s ease;
+    }
+    .btn-template:hover { background: rgba(99, 102, 241, 0.2); color: #fff; border-color: var(--primary); }
   </style>
 </head>
 <body>
+
   <div class="container">
+    <div class="header">
+      <span class="badge">AI VIDEO STUDIO v3.0 ULTIMATE</span>
+      <h1>AI Video Generator Studio</h1>
+      <p style="color:var(--text-muted); font-size:13px; margin-top:6px;">Multi-Adegan, Dialog Karakter A/B, & Dynamic Camera Motion</p>
+    </div>
+
+    <div class="template-bar">
+      <button class="btn-template" onclick="applyTemplate('horor')">👻 Templat Horor</button>
+      <button class="btn-template" onclick="applyTemplate('edukasi')">💡 Templat Edukasi</button>
+      <button class="btn-template" onclick="applyTemplate('dialog')">🗣️ Templat Dialog 2 Orang</button>
+    </div>
+
     <div class="card">
-      <h2 style="margin-bottom:16px; text-align:center; color:#818cf8;">⚡ AI Video Studio Pro v3.0</h2>
-      
-      <div class="form-group">
-        <label>🔑 GitHub PAT Token</label>
-        <input type="password" id="userTokenInput" placeholder="github_pat_11AAA...">
+      <div class="form-group" style="background: rgba(99, 102, 241, 0.1); padding: 14px; border-radius: 12px; border: 1px dashed #6366f1; margin-bottom: 18px;">
+        <label style="color: #a5b4fc;">🔑 GitHub Fine-Grained Token (PAT)</label>
+        <input type="password" id="userTokenInput" placeholder="github_pat_11AAAAAAA_xxxxxxxx..." onchange="saveTokenLocally()">
       </div>
 
-      <div class="form-group">
-        <label>🎨 Style Visual & Mood Suara</label>
-        <select id="styleInput">
-          <option value="horror">Horror (Suara Mencekam & Berat)</option>
-          <option value="cinematic" selected>Cinematic (Suara Sinematik Standar)</option>
-          <option value="cyberpunk">Cyberpunk (Suara Tempo Cepat)</option>
-        </select>
+      <div class="section-title">⚙️ Konfigurasi Video & Audio</div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>🗣️ Suara Karakter A</label>
+          <select id="voiceInput">
+            <option value="id-ID-ArdiNeural">Pria (Indonesia)</option>
+            <option value="id-ID-GadisNeural">Wanita (Indonesia)</option>
+            <option value="jv-ID-DimasNeural">Pria (Jawa)</option>
+            <option value="su-ID-JajangNeural">Pria (Sunda)</option>
+            <option value="en-US-GuyNeural">Pria (English US)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>🎨 Style Visual & Mood Suara</label>
+          <select id="styleInput">
+            <option value="cinematic">Cinematic (Suara Sinematik Standar)</option>
+            <option value="horror">Horror (Suara Mencekam & Berat)</option>
+            <option value="cyberpunk">Cyberpunk / Sci-Fi (Suara Tempo Cepat)</option>
+            <option value="anime">Anime / Manga Style</option>
+          </select>
+        </div>
       </div>
 
+      <div class="grid-2">
+        <div class="form-group">
+          <label>📐 Aspek Rasio</label>
+          <select id="aspectInput">
+            <option value="9:16">Vertical 9:16 (Shorts/Reels)</option>
+            <option value="16:9">Horizontal 16:9 (YouTube)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>🏷️ Watermark Username</label>
+          <input type="text" id="watermarkInput" placeholder="Contoh: @adi88m_studio">
+        </div>
+      </div>
+
+      <!-- ADEGAN 1 -->
+      <div class="section-title">🎥 Adegan 1</div>
       <div class="form-group">
         <label>✨ Prompt Visual Adegan 1</label>
         <input type="text" id="promptInput" value="candi kuno di tengah hutan misterius malam hari">
@@ -50,21 +243,43 @@
         <textarea id="narasiInput" rows="2">Dia berjalan menyusuri tempat suci yang telah lama terlupakan.</textarea>
       </div>
 
+      <!-- DIALOG KARAKTER B -->
+      <div class="grid-2">
+        <div class="form-group">
+          <label>🗣️ Suara Karakter B (Dialog)</label>
+          <select id="voiceB1Input">
+            <option value="">-- Tanpa Karakter B --</option>
+            <option value="id-ID-GadisNeural">Wanita (Indonesia)</option>
+            <option value="id-ID-ArdiNeural">Pria (Indonesia)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>📖 Narasi Karakter B</label>
+          <input type="text" id="narasiB1Input" placeholder="Balasan dialog Karakter B...">
+        </div>
+      </div>
+
+      <!-- ADEGAN 2 -->
+      <div class="section-title">🎥 Adegan 2 (Opsional)</div>
       <div class="form-group">
-        <label>✨ Prompt Visual Adegan 2 (Opsional)</label>
-        <input type="text" id="prompt2Input" placeholder="gerbang emas terbuka memancarkan cahaya">
+        <label>✨ Prompt Visual Adegan 2</label>
+        <input type="text" id="prompt2Input" placeholder="Contoh: gerbang emas terbuka memancarkan cahaya">
       </div>
       <div class="form-group">
         <label>📖 Narasi Cerita 2</label>
-        <textarea id="narasi2Input" rows="2" placeholder="Dan rahasia besar itu terungkap di depan matanya."></textarea>
+        <textarea id="narasi2Input" rows="2" placeholder="Contoh: Dan rahasia besar itu terungkap di depan matanya."></textarea>
       </div>
 
       <button class="btn" id="renderBtn" onclick="triggerGitHubRender()">⚡ Render AI Video v3.0</button>
+      
       <div id="statusTxt" class="status-box"></div>
+      <div id="progressContainer" class="progress-bar-container">
+        <div id="progressBar" class="progress-bar"></div>
+      </div>
 
       <div id="videoBox" class="video-container">
         <video id="videoPlayer" controls autoplay loop playsinline></video>
-        <a id="downloadBtn" class="btn-download" href="#" target="_blank" download="video.mp4">📥 Download Video MP4</a>
+        <a id="downloadBtn" class="btn-download" href="#" target="_blank">📥 Download Video MP4</a>
       </div>
     </div>
   </div>
@@ -73,60 +288,116 @@
     const GITHUB_USERNAME = "adi88m";               
     const GITHUB_REPO     = "ai-video-studio"; 
 
-    async function triggerGitHubRender() {
-      const token = document.getElementById('userTokenInput').value.trim();
-      if (!token) return alert("Harap masukkan Token PAT GitHub!");
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedToken = localStorage.getItem("STUDIO_PAT_TOKEN");
+      if (savedToken) document.getElementById('userTokenInput').value = savedToken;
+    });
 
-      const renderBtn = document.getElementById('renderBtn');
-      const status = document.getElementById('statusTxt');
-      const videoBox = document.getElementById('videoBox');
+    function saveTokenLocally() {
+      const tokenVal = document.getElementById('userTokenInput').value.trim();
+      if (tokenVal) localStorage.setItem("STUDIO_PAT_TOKEN", tokenVal);
+    }
 
-      renderBtn.disabled = true;
-      videoBox.style.display = "none";
-      status.style.display = "block";
-      status.innerHTML = "⏳ Mengirim sinyal ke server GitHub...";
-
-      const payload = {
-        prompt: document.getElementById('promptInput').value.trim(),
-        narasi: document.getElementById('narasiInput').value.trim(),
-        style: document.getElementById('styleInput').value,
-        prompt2: document.getElementById('prompt2Input').value.trim(),
-        narasi2: document.getElementById('narasi2Input').value.trim(),
-        voice: "id-ID-ArdiNeural",
-        aspect: "9:16"
-      };
-
-      try {
-        const res = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/dispatches`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github.v3+json',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ event_type: 'generate_video', client_payload: payload })
-        });
-
-        if (res.ok) {
-          status.innerHTML = "🔄 <b>Server sedang merender video sinematik baru...</b><br>Tunggu sekitar 60 detik.";
-          pollResult(token);
-        } else {
-          status.innerHTML = "❌ Gagal memicu server. Periksa Token PAT.";
-          renderBtn.disabled = false;
-        }
-      } catch (err) {
-        status.innerHTML = "❌ Error: " + err.message;
-        renderBtn.disabled = false;
+    function applyTemplate(type) {
+      if (type === 'horor') {
+        document.getElementById('styleInput').value = 'horror';
+        document.getElementById('promptInput').value = 'rumah tua terbengkalai di tengah hutan berkabut malam hari';
+        document.getElementById('narasiInput').value = 'Jangan pernah datang ke tempat ini setelah tengah malam...';
+      } else if (type === 'edukasi') {
+        document.getElementById('styleInput').value = 'cinematic';
+        document.getElementById('promptInput').value = 'planet bumi dilihat dari luar angkasa sinematik';
+        document.getElementById('narasiInput').value = 'Tahukah kamu, tata surya kita menyimpan ribuan misteri.';
+      } else if (type === 'dialog') {
+        document.getElementById('promptInput').value = 'detektif di kafe gelap sinematik';
+        document.getElementById('narasiInput').value = 'Apakah kamu membawa dokumen rahasia itu?';
+        document.getElementById('voiceB1Input').value = 'id-ID-GadisNeural';
+        document.getElementById('narasiB1Input').value = 'Tentu saja, tapi ada harganya.';
       }
     }
 
-        async function pollResult(token) {
-      co    async function pollResult(token) {
+    async function triggerGitHubRender() {
+      const GITHUB_TOKEN = document.getElementById('userTokenInput').value.trim() || localStorage.getItem("STUDIO_PAT_TOKEN");
+      if (!GITHUB_TOKEN) return alert("Harap masukkan Token PAT GitHub Anda!");
+
+      saveTokenLocally();
+
+      const payloadData = {
+        prompt: document.getElementById('promptInput').value.trim(),
+        narasi: document.getElementById('narasiInput').value.trim(),
+        voice: document.getElementById('voiceInput').value,
+        aspect: document.getElementById('aspectInput').value,
+        style: document.getElementById('styleInput').value,
+        voice_b1: document.getElementById('voiceB1Input').value,
+        narasi_b1: document.getElementById('narasiB1Input').value.trim(),
+        prompt2: document.getElementById('prompt2Input').value.trim(),
+        narasi2: document.getElementById('narasi2Input').value.trim(),
+        watermark: document.getElementById('watermarkInput').value.trim()
+      };
+
+      const status = document.getElementById('statusTxt');
+      const renderBtn = document.getElementById('renderBtn');
+      const videoBox = document.getElementById('videoBox');
+      const progressContainer = document.getElementById('progressContainer');
+      const progressBar = document.getElementById('progressBar');
+
+      status.style.display = "block";
+      progressContainer.style.display = "block";
+      progressBar.style.width = "5%";
+      videoBox.style.display = "none";
+      renderBtn.disabled = true;
+      status.innerHTML = "⏳ Mengirim sinyal ke server cloud...";
+
+      try {
+        const response = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/dispatches`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            event_type: 'generate_video',
+            client_payload: payloadData
+          })
+        });
+
+        if (response.ok) {
+          status.innerHTML = "🔄 <b>Server sedang merender video sinematik v3.0...</b><br>Estimasi waktu: 60-90 detik.";
+          startProgressBar();
+          pollResult(GITHUB_TOKEN);
+        } else {
+          status.innerHTML = "❌ Gagal memicu server. Periksa kembali Token PAT.";
+          renderBtn.disabled = false;
+          progressContainer.style.display = "none";
+        }
+      } catch (err) {
+        status.innerHTML = "❌ Terjadi kesalahan koneksi: " + err.message;
+        renderBtn.disabled = false;
+        progressContainer.style.display = "none";
+      }
+    }
+
+    function startProgressBar() {
+      const progressBar = document.getElementById('progressBar');
+      let currentWidth = 5;
+      const timer = setInterval(() => {
+        if (currentWidth < 90) {
+          currentWidth += 1.5;
+          progressBar.style.width = currentWidth + "%";
+        } else {
+          clearInterval(timer);
+        }
+      }, 1000);
+    }
+
+    async function pollResult(token) {
       const status = document.getElementById('statusTxt');
       const renderBtn = document.getElementById('renderBtn');
       const videoBox = document.getElementById('videoBox');
       const videoPlayer = document.getElementById('videoPlayer');
       const downloadBtn = document.getElementById('downloadBtn');
+      const progressContainer = document.getElementById('progressContainer');
+      const progressBar = document.getElementById('progressBar');
 
       const startTime = new Date().getTime();
 
@@ -144,37 +415,45 @@
               renderBtn.disabled = false;
 
               if (latestRun.conclusion === "success") {
-                status.innerHTML = "📥 Memuat stream video ke HP...";
-                
-                // Ambil release asset via GitHub API Auth agar repositori private tidak 404
+                status.innerHTML = "📥 <b>Rendering selesai!</b> Mengunduh stream video ke HP...";
+
+                // Mengambil metadata Release Asset via API GitHub Auth
                 const releaseRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/releases/tags/v${latestRun.id}`, {
                   headers: { 'Authorization': `Bearer ${token}` }
                 });
-                const releaseData = await releaseRes.json();
-                const asset = releaseData.assets.find(a => a.name === "output_video.mp4");
+                
+                if (releaseRes.ok) {
+                  const releaseData = await releaseRes.json();
+                  const asset = releaseData.assets.find(a => a.name === "output_video.mp4");
 
-                if (asset && asset.id) {
-                  const mediaRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/releases/assets/${asset.id}`, {
-                    headers: { 
-                      'Authorization': `Bearer ${token}`,
-                      'Accept': 'application/octet-stream'
-                    }
-                  });
+                  if (asset && asset.id) {
+                    // Mengambil binary blob MP4 langsung dari GitHub API
+                    const mediaRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/releases/assets/${asset.id}`, {
+                      headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/octet-stream'
+                      }
+                    });
 
-                  const blob = await mediaRes.blob();
-                  const videoObjectURL = URL.createObjectURL(blob);
+                    const blob = await mediaRes.blob();
+                    const videoObjectURL = URL.createObjectURL(blob);
 
-                  status.innerHTML = "✅ <b>Rendering Selesai!</b> Video siap diputar dan diunduh.";
-                  videoPlayer.src = videoObjectURL;
-                  downloadBtn.href = videoObjectURL;
-                  downloadBtn.setAttribute("download", `ai-video-${latestRun.id}.mp4`);
-                  videoBox.style.display = "block";
-                } else {
-                  status.innerHTML = "❌ Gagal menemukan file video di Release.";
+                    progressBar.style.width = "100%";
+                    setTimeout(() => { progressContainer.style.display = "none"; }, 1000);
+
+                    status.innerHTML = "✅ <b>Rendering Selesai!</b> Video siap diputar dan diunduh.";
+                    videoPlayer.src = videoObjectURL;
+                    downloadBtn.href = videoObjectURL;
+                    downloadBtn.setAttribute("download", `ai-video-${latestRun.id}.mp4`);
+                    videoBox.style.display = "block";
+                    return;
+                  }
                 }
+                status.innerHTML = "⚠️ Video selesai dirender, tetapi asset Release tidak ditemukan.";
               } else {
-                status.innerHTML = "❌ Render gagal di server. Cek log tab Actions.";
+                status.innerHTML = "❌ Rendering gagal di server. Silakan periksa log Actions.";
               }
+              progressContainer.style.display = "none";
             }
           }
         } catch (e) { console.error(e); }
