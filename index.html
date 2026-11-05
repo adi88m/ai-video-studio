@@ -417,14 +417,22 @@
               if (latestRun.conclusion === "success") {
                 status.innerHTML = "📥 <b>Rendering selesai!</b> Mengunduh stream video ke HP...";
 
-                // MENGGUNAKAN TAG FORMAT "render-${latestRun.id}" DENGAN PRESISI
-                const releaseRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/releases/tags/render-${latestRun.id}`, {
+                // AUTO-FALLBACK: MENGAMBIL RELEASE TERBARU (LATEST) SECARA DINAMIS
+                let releaseRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/releases/latest?t=${new Date().getTime()}`, {
                   headers: { 'Authorization': `Bearer ${token}` }
                 });
                 
+                // JIKA TAG RELEASE LATEST CHANCE 404, PAKSA CARI DAFTAR RELEASE TERATAS
+                if (!releaseRes.ok) {
+                  releaseRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/releases?per_page=1`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                  });
+                }
+
                 if (releaseRes.ok) {
                   const releaseData = await releaseRes.json();
-                  const asset = releaseData.assets.find(a => a.name === "output_video.mp4");
+                  const targetRelease = Array.isArray(releaseData) ? releaseData[0] : releaseData;
+                  const asset = targetRelease.assets.find(a => a.name === "output_video.mp4");
 
                   if (asset && asset.id) {
                     const mediaRes = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/releases/assets/${asset.id}`, {
